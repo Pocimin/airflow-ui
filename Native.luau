@@ -72,6 +72,8 @@ local function newWindow(o)
     function w:AddToggle(c) return buildSection(airWindow:CreateTab({ Name = "Controls" })):AddToggle(c) end
     function w:AddButton(c) return buildSection(airWindow:CreateTab({ Name = "Controls" })):AddButton(c) end
     function w:Destroy() if w._W and w._W.Destroy then pcall(function() w._W:Destroy() end) end end
+    function w:Notify(cfg) cfg = norm(cfg); pcall(function() airWindow:Notify({ Title = cfg.Title, Content = cfg.Content or cfg.Description, Icon = cfg.Icon or cfg.Image }) end) end
+    function w:SelectTab(t) pcall(function() airWindow:SelectTab(t) end) end
     return w
 end
 
@@ -108,6 +110,15 @@ end
 Native.Scale = { Window = 1 }
 Native.Window = Native.new
 Native.theme = {}
+
+-- CompKiller loader surface: no-op (Airflow has its own loading card).
+local function yieldNoop() end
+function Native:Loader(logo, duration)
+    return { yield = yieldNoop }
+end
+function Native:GetConfig(name) return nil end
+function Native:SetConfig(name) return nil end
+function Native:Destroy() if Native._lastWindow then pcall(function() Native._lastWindow:Destroy() end) end end
 
 function Native:newNotify()
     return { Notify = function(cfg) cfg = norm(cfg); local w = self._lastWindow or self._W; if w and w.Notify then pcall(function() w:Notify({ Title = cfg.Title, Content = cfg.Content, Icon = cfg.Icon }) end) end end }
