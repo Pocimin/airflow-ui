@@ -47,7 +47,10 @@ local function wrapParagraph(ctrl)
 end
 
 -- section builder over an airflow tab ----------------------------------------
-local function buildSection(airTab, pos)
+local function buildSection(airTab, pos, sectionName)
+    -- Airflow requires CreateSection(<name>) before controls (else they render blank/no-name)
+    local name = sectionName or (pos == "right" and "Statistic" or "Features")
+    pcall(function() airTab:CreateSection(tostring(name)) end)
     local sec = {}
     function sec:AddToggle(c) c = norm(c); return wrapControl(airTab:CreateToggle({ Name = c.Name, Desc = c.ValueName or c.Desc, CurrentValue = c.Default == true, Callback = cb(c) })) end
     function sec:AddSlider(c) c = norm(c); return wrapControl(airTab:CreateSlider({ Name = c.Name, Desc = c.ValueName or c.Desc, Range = { c.Min or 0, c.Max or 100 }, Increment = c.Increment or 1, Suffix = c.ValueName or "", CurrentValue = c.Default or c.Min or 0, Callback = cb(c) })) end
@@ -71,6 +74,30 @@ local function newWindow(o)
         Icon = typeof(o.Logo) == "string" and o.Logo or ((getgenv and getgenv()).NZNT_BRAND_LOGO) or "rbxassetid://75353810328300",
         ToggleUIKeybind = o.Keybind or "RightControl",
     })
+
+    -- Fullscreen cover: fill the whole screen so nothing behind is visible.
+    pcall(function()
+        local UIS2 = game:GetService("UserInputService")
+        local screen = UIS2:GetScreenResolution()
+        if airWindow and airWindow.Root and airWindow.Gui then
+            airWindow.MaxSize = Vector2.new(screen.X + 32, screen.Y + 32)
+            airWindow.MainSize = Vector2.new(screen.X, screen.Y)
+            airWindow.Root.Size = UDim2.fromOffset(screen.X, screen.Y)
+            airWindow.Root.Position = UDim2.new(0, 0, 0, 0)
+            airWindow.KeepOnScreen = true
+        end
+    end)
+    -- Only hide it with Shift + U + Ctrl.
+    pcall(function()
+        local UIS = game:GetService("UserInputService")
+        UIS.InputBegan:Connect(function(inp, gp)
+            if gp or not inp or inp.UserInputType ~= Enum.UserInputType.Keyboard or inp.KeyCode ~= Enum.KeyCode.U then return end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) and UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+                task.spawn(function() pcall(function() airWindow:Toggle() end) end)
+            end
+        end)
+    end)
+    pcall(function() airWindow.Keybind = nil end)
     local w = { _W = airWindow }
     function w:DrawContainerTab(o) o = norm(o); return { _W = airWindow, _TabName = o.Name, _Icon = o.Icon }
     end
@@ -92,7 +119,7 @@ function containerMeta:DrawTab(o)
     local t = { _Tab = airTab, _W = self._W }
     function t:DrawSection(o)
         o = norm(o)
-        return buildSection(airTab, tonumber(o.Position) == 2 and "right" or "left")
+        return buildSection(airTab, tonumber(o.Position) == 2 and "right" or "left", o.Name or o.Title)
     end
     function t:AddToggle(c) return buildSection(airTab):AddToggle(c) end
     function t:AddSlider(c) return buildSection(airTab):AddSlider(c) end

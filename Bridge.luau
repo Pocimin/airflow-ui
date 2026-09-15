@@ -96,8 +96,13 @@ local function colorProxy(col)
     return p
 end
 
--- Build a Section (airflow tab page) wrapper
-local function wrapSection(airTab)
+-- Build a Section (airflow page section) wrapper.
+-- Airflow requires CreateSection(<name>) BEFORE controls so they render in a named group
+-- (controls created with no active section render as blank/no-name "misc" items).
+local function wrapSection(airTab, sectionName)
+    if sectionName and sectionName ~= "" then
+        pcall(function() airTab:CreateSection(tostring(sectionName)) end)
+    end
     local section = {}
     local controls = {}
 
@@ -227,22 +232,23 @@ function Bridge:CreateTab(config)
     local tab = {}
 
     function tab:CreateSection(name)
-        return wrapSection(airTab)
+        local n = type(name) == "table" and (name.Name or name.Title or name[1]) or tostring(name or "Features")
+        return wrapSection(airTab, n)
     end
     function tab:CreateGroupbox(config)
         config = normalize(config)
-        return wrapSection(airTab)
+        return wrapSection(airTab, config.Name or config.Title or "Features")
     end
     tab.CreateGroupBox = tab.CreateGroupbox
     tab.AddSection = tab.CreateSection
     tab.AddLeftGroupbox = tab.CreateGroupbox
     tab.AddRightGroupbox = tab.CreateGroupbox
-    tab.AddLeftTabbox = function(config) return { AddTab = function(cfg) return wrapSection(airTab) end } end
-    tab.AddRightTabbox = function(config) return { AddTab = function(cfg) return wrapSection(airTab) end } end
-    tab.AddTab = function(config) return wrapSection(airTab) end
+    tab.AddLeftTabbox = function(config) config = normalize(config); return { AddTab = function(cfg) cfg = normalize(cfg); return wrapSection(airTab, cfg.Name or cfg.Title or "Features") end } end
+    tab.AddRightTabbox = function(config) config = normalize(config); return { AddTab = function(cfg) cfg = normalize(cfg); return wrapSection(airTab, cfg.Name or cfg.Title or "Features") end } end
+    tab.AddTab = function(config) config = normalize(config); return wrapSection(airTab, config.Name or config.Title or "Features") end
 
     local function current()
-        return wrapSection(airTab)
+        return wrapSection(airTab, "Features")
     end
     tab.CreateToggle = function(c) return current():CreateToggle(c) end
     tab.CreateButton = function(c) return current():CreateButton(c) end
@@ -284,6 +290,31 @@ function Bridge:CreateWindow(config)
         ConfigurationSaving = config.ConfigurationSaving,
         Home = config.Home
     })
+
+    -- Fullscreen cover: fill the whole screen so nothing behind is visible.
+    pcall(function()
+        local UIS = game:GetService("UserInputService")
+        local screen = UIS:GetScreenResolution()
+        if airWindow and airWindow.Root and airWindow.Gui then
+            airWindow.MaxSize = Vector2.new(screen.X + 32, screen.Y + 32)
+            airWindow.MainSize = Vector2.new(screen.X, screen.Y)
+            airWindow.Root.Size = UDim2.fromOffset(screen.X, screen.Y)
+            airWindow.Root.Position = UDim2.new(0, 0, 0, 0)
+            airWindow.KeepOnScreen = true
+        end
+    end)
+    -- Only hide it with Shift + U + Ctrl.
+    pcall(function()
+        local UIS = game:GetService("UserInputService")
+        UIS.InputBegan:Connect(function(inp, gp)
+            if gp or not inp or inp.UserInputType ~= Enum.UserInputType.Keyboard or inp.KeyCode ~= Enum.KeyCode.U then return end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) and UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+                task.spawn(function() pcall(function() airWindow:Toggle() end) end)
+            end
+        end)
+    end)
+    -- Disable the default single-keybind toggle to avoid two ways of hiding.
+    pcall(function() airWindow.Keybind = nil end)
     local proxy = { _Window = airWindow }
     proxy.CreateTab = Bridge.CreateTab
     proxy.MakeTab = Bridge.CreateTab
