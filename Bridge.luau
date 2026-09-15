@@ -27,15 +27,11 @@ end
 function Bridge:CreateWindow(config)
     config = norm(config)
     local UIS = game:GetService("UserInputService")
-    local screen = game:GetService("GuiService"):GetScreenResolution()
     local airWindow = Airflow:CreateWindow({
         Name = config.Name or "nznt's hub",
         LoadingSubtitle = config.Subtitle or "by nznt",
         Icon = BRAND_LOGO,
         ToggleUIKeybind = nil,                     -- we hide with Shift+U+Ctrl only
-        Size = UDim2.fromScale(1, 1),              -- cover the whole screen
-        MinSize = Vector2.new(screen.X, screen.Y),
-        MaxSize = Vector2.new(screen.X, screen.Y),
         KeepOnScreen = true,
         OpenButton = { Title = "nznt's hub", Icon = BRAND_LOGO },
         ConfigurationSaving = config.ConfigurationSaving,
@@ -167,6 +163,23 @@ function Bridge:CreateWindow(config)
     function w:SelectTab(t) pcall(function() airWindow:SelectTab(t) end) end
     function w:Confirm(c) c = norm(c); pcall(function() airWindow:Confirm({ Title = c.Title, Content = c.Content, Icon = c.Icon, Callback = c.Callback, OnCancel = c.OnCancel }) end) end
     w.Dialog = w.Confirm
+    function w:SetFullScreen(on)
+        pcall(function()
+            local scr = game:GetService("GuiService"):GetScreenResolution()
+            if on then
+                airWindow.MinSize = Vector2.new(scr.X, scr.Y)
+                airWindow.MaxSize = Vector2.new(scr.X, scr.Y)
+                airWindow.Root.Size = UDim2.fromScale(1, 1)
+                airWindow.Root.Position = UDim2.new(0, 0, 0, 0)
+            else
+                airWindow.MinSize = Vector2.new(480, 360)
+                airWindow.MaxSize = Vector2.new(100000, 100000)
+                airWindow.Root.Size = UDim2.fromOffset(640, 480)
+            end
+            if airWindow._fitToScreen then airWindow:_fitToScreen() end
+            if airWindow._clampToScreen then airWindow:_clampToScreen() end
+        end)
+    end
     function w:GetWindow() return airWindow end
     return w
 end

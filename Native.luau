@@ -71,15 +71,11 @@ end
 function Native.new(o)
     o = norm(o)
     local UIS = game:GetService("UserInputService")
-    local screen = game:GetService("GuiService"):GetScreenResolution()
     local airWindow = Airflow:CreateWindow({
         Name = o.Name or "nznt's hub",
         LoadingSubtitle = o.Subtitle or "by nznt",
         Icon = typeof(o.Logo) == "string" and o.Logo or BRAND_LOGO,
         ToggleUIKeybind = nil,
-        Size = UDim2.fromScale(1, 1),
-        MinSize = Vector2.new(screen.X, screen.Y),
-        MaxSize = Vector2.new(screen.X, screen.Y),
         KeepOnScreen = true,
         OpenButton = { Title = "nznt's hub", Icon = BRAND_LOGO },
     })
@@ -100,6 +96,23 @@ function Native.new(o)
     function w:Destroy() if airWindow and airWindow.Destroy then pcall(function() airWindow:Destroy() end) end end
     function w:Toggle(open) pcall(function() airWindow:Toggle(open) end) end
     function w:SelectTab(t) pcall(function() airWindow:SelectTab(t) end) end
+    function w:SetFullScreen(on)
+        pcall(function()
+            local scr = game:GetService("GuiService"):GetScreenResolution()
+            if on then
+                airWindow.MinSize = Vector2.new(scr.X, scr.Y)
+                airWindow.MaxSize = Vector2.new(scr.X, scr.Y)
+                airWindow.Root.Size = UDim2.fromScale(1, 1)
+                airWindow.Root.Position = UDim2.new(0, 0, 0, 0)
+            else
+                airWindow.MinSize = Vector2.new(480, 360)
+                airWindow.MaxSize = Vector2.new(100000, 100000)
+                airWindow.Root.Size = UDim2.fromOffset(640, 480)
+            end
+            if airWindow._fitToScreen then airWindow:_fitToScreen() end
+            if airWindow._clampToScreen then airWindow:_clampToScreen() end
+        end)
+    end
     return w
 end
 Native.Scale = { Window = 1 }
