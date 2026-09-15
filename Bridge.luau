@@ -325,6 +325,61 @@ function Bridge:CreateWindow(config)
     end)
     -- Disable the default single-keybind toggle to avoid two ways of hiding.
     pcall(function() airWindow.Keybind = nil end)
+
+    -- Floating open/close button for mobile (and anyone without the keybind).
+    -- Lives in its OWN ScreenGui on top so it stays clickable even when the window is fullscreen.
+    pcall(function()
+        local Players = game:GetService("Players")
+        local screen = Instance.new("ScreenGui")
+        screen.Name = "NZNT_OpenButton"
+        screen.ResetOnSpawn = false
+        screen.DisplayOrder = 100
+        screen.Parent = Players.LocalPlayer and Players.LocalPlayer:WaitForChild("PlayerGui") or game:GetService("CoreGui")
+        local btn = Instance.new("TextButton")
+        btn.Name = "NZNT_OpenButton_Button"
+        btn.BackgroundColor3 = Color3.fromRGB(24, 19, 24)
+        btn.BorderSizePixel = 0
+        btn.Text = "nznt's hub"
+        btn.TextColor3 = Color3.fromRGB(233, 229, 234)
+        btn.TextSize = 14
+        btn.Size = UDim2.new(0, 120, 0, 34)
+        btn.Position = UDim2.new(0.5, -60, 0, 10)
+        btn.ZIndex = 100
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 10)
+        corner.Parent = btn
+        btn.Parent = screen
+        local dragging, dragStart, dragPos
+        btn.InputBegan:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = inp.Position
+                dragPos = btn.Position
+            end
+        end)
+        local UIS = game:GetService("UserInputService")
+        UIS.InputChanged:Connect(function(inp)
+            if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
+                local delta = inp.Position - dragStart
+                btn.Position = UDim2.fromOffset(dragPos.X.Offset + delta.X, dragPos.Y.Offset + delta.Y)
+            end
+        end)
+        UIS.InputEnded:Connect(function(inp)
+            if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+                dragging = false
+            end
+        end)
+        btn.Activated:Connect(function()
+            if not dragging then
+                task.spawn(function() pcall(function() airWindow:Toggle() end) end)
+            end
+        end)
+        -- remove the button when the window gui is destroyed
+        task.spawn(function()
+            repeat task.wait(1) until not airWindow or not airWindow.Gui or not airWindow.Gui.Parent
+            pcall(function() screen:Destroy() end)
+        end)
+    end)
     local proxy = { _Window = airWindow }
     proxy.CreateTab = Bridge.CreateTab
     proxy.MakeTab = Bridge.CreateTab
