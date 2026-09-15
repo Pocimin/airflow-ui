@@ -23,6 +23,7 @@ local function get(url)
 end
 
 local BASE = "https://raw.githubusercontent.com/Pocimin/airflow-ui/main"
+local function stripBom(x) if type(x)=="string" and x:sub(1,1)=="\239\187\191" then return x:sub(2) end return x end
 
 print("===== NZNT AIRFLOW-UI SMOKE TEST =====")
 
@@ -38,7 +39,7 @@ else
     end
     -- capture loadstring's 2nd return = error message
     local loader = loadstring or load
-    local fn, err = loader(src)
+    local fn, err = loader(stripBom(src))
     if type(fn) == "function" and fn then
         local okc, Airflow = pcall(fn)
         if okc and type(Airflow) == "table" and Airflow.CreateWindow then
@@ -57,7 +58,7 @@ if not bridgeSrc then
     fail("Bridge.luau fetch", "could not fetch")
 else
     local loader = loadstring or load
-    local fn, err = loader(bridgeSrc)
+    local fn, err = loader(stripBom(bridgeSrc))
     if type(fn) == "function" and fn then
         local okc, Bridge = pcall(fn)
         if okc and type(Bridge) == "table" and Bridge.CreateWindow then
@@ -76,7 +77,7 @@ if not natSrc then
     fail("Native.luau fetch", "could not fetch")
 else
     local loader = loadstring or load
-    local fn, err = loader(natSrc)
+    local fn, err = loader(stripBom(natSrc))
     if type(fn) == "function" and fn then
         local okc, Native = pcall(fn)
         if okc and type(Native) == "table" and Native.new then

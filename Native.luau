@@ -12,7 +12,13 @@
 --   Native.Scale.Window
 --   Native.newNotify() -> { Notify = function(cfg) end }
 
-local Airflow = loadstring(game:HttpGet("https://raw.githubusercontent.com/Pocimin/airflow-ui/main/Source.luau", true))()
+local function grab(url)
+    local raw = game:HttpGet(url, true)
+    -- strip UTF-8 BOM if GitHub raw added one (breaks loadstring :1)
+    if raw:sub(1, 1) == "\239\187\191" then raw = raw:sub(2) end
+    return raw
+end
+local Airflow = loadstring(grab("https://raw.githubusercontent.com/Pocimin/airflow-ui/main/Source.luau"))()
 local Native = {}
 
 local function norm(c)
