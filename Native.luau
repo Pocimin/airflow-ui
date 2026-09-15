@@ -115,18 +115,26 @@ local containerMeta = {}
 containerMeta.__index = containerMeta
 function containerMeta:DrawTab(o)
     o = norm(o)
-    local airTab = self._W:CreateTab({ Name = o.Name or self._TabName or "Tab", Icon = self._Icon })
-    local t = { _Tab = airTab, _W = self._W }
+    local iceTab = self._W:CreateTab({ Name = o.Name or self._TabName or "Tab", Icon = self._Icon })
+    local t = { _Tab = iceTab, _W = self._W }
+    local activeSection
+    local function setActive(s) activeSection = s; return s end
+    local function build(name)
+        if not activeSection then
+            setActive(buildSection(iceTab, nil, name or "Features"))
+        end
+        return activeSection
+    end
     function t:DrawSection(o)
         o = norm(o)
-        return buildSection(airTab, tonumber(o.Position) == 2 and "right" or "left", o.Name or o.Title)
+        return setActive(buildSection(iceTab, tonumber(o.Position) == 2 and "right" or "left", o.Name or o.Title))
     end
-    function t:AddToggle(c) return buildSection(airTab):AddToggle(c) end
-    function t:AddSlider(c) return buildSection(airTab):AddSlider(c) end
-    function t:AddButton(c) return buildSection(airTab):AddButton(c) end
-    function t:AddParagraph(c) return buildSection(airTab):AddParagraph(c) end
-    function t:AddDropdown(c) return buildSection(airTab):AddDropdown(c) end
-    function t:AddTextBox(c) return buildSection(airTab):AddTextBox(c) end
+    function t:AddToggle(c) return build():AddToggle(c) end
+    function t:AddSlider(c) return build():AddSlider(c) end
+    function t:AddButton(c) return build():AddButton(c) end
+    function t:AddParagraph(c) return build():AddParagraph(c) end
+    function t:AddDropdown(c) return build():AddDropdown(c) end
+    function t:AddTextBox(c) return build():AddTextBox(c) end
     return t
 end
 

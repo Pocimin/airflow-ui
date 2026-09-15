@@ -230,25 +230,35 @@ function Bridge:CreateTab(config)
         Icon = config.Icon or config.IconContact
     })
     local tab = {}
+    local activeSection   -- the last explicitly-created section, reused by current()
+
+    local function setActive(sec)
+        activeSection = sec
+        return sec
+    end
 
     function tab:CreateSection(name)
         local n = type(name) == "table" and (name.Name or name.Title or name[1]) or tostring(name or "Features")
-        return wrapSection(airTab, n)
+        return setActive(wrapSection(airTab, n))
     end
     function tab:CreateGroupbox(config)
         config = normalize(config)
-        return wrapSection(airTab, config.Name or config.Title or "Features")
+        return setActive(wrapSection(airTab, config.Name or config.Title or "Features"))
     end
     tab.CreateGroupBox = tab.CreateGroupbox
     tab.AddSection = tab.CreateSection
     tab.AddLeftGroupbox = tab.CreateGroupbox
     tab.AddRightGroupbox = tab.CreateGroupbox
-    tab.AddLeftTabbox = function(config) config = normalize(config); return { AddTab = function(cfg) cfg = normalize(cfg); return wrapSection(airTab, cfg.Name or cfg.Title or "Features") end } end
-    tab.AddRightTabbox = function(config) config = normalize(config); return { AddTab = function(cfg) cfg = normalize(cfg); return wrapSection(airTab, cfg.Name or cfg.Title or "Features") end } end
-    tab.AddTab = function(config) config = normalize(config); return wrapSection(airTab, config.Name or config.Title or "Features") end
+    tab.AddLeftTabbox = function(config) config = normalize(config); return { AddTab = function(cfg) cfg = normalize(cfg); return setActive(wrapSection(airTab, cfg.Name or cfg.Title or "Features")) end } end
+    tab.AddRightTabbox = function(config) config = normalize(config); return { AddTab = function(cfg) cfg = normalize(cfg); return setActive(wrapSection(airTab, cfg.Name or cfg.Title or "Features")) end } end
+    tab.AddTab = function(config) config = normalize(config); return setActive(wrapSection(airTab, config.Name or config.Title or "Features")) end
 
     local function current()
-        return wrapSection(airTab, "Features")
+        -- reuse the active section; only create a default "Features" section once if none exists yet
+        if not activeSection then
+            setActive(wrapSection(airTab, "Features"))
+        end
+        return activeSection
     end
     tab.CreateToggle = function(c) return current():CreateToggle(c) end
     tab.CreateButton = function(c) return current():CreateButton(c) end
