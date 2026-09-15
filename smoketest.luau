@@ -36,11 +36,18 @@ else
     else
         fail("Source.luau brand icon", "75353810328300 NOT found in fork")
     end
-    local ls, Airflow = pcall(function() return loadstring(src)() end)
-    if ls and type(Airflow) == "table" and Airflow.CreateWindow then
-        ok("Source.luau loads & exposes CreateWindow", "Airflow API ok")
+    -- capture loadstring's 2nd return = error message
+    local loader = loadstring or load
+    local fn, err = loader(src)
+    if type(fn) == "function" and fn then
+        local okc, Airflow = pcall(fn)
+        if okc and type(Airflow) == "table" and Airflow.CreateWindow then
+            ok("Source.luau compiles & runs", "Airflow API ok")
+        else
+            fail("Source.luau run", tostring(Airflow))
+        end
     else
-        fail("Source.luau load", tostring(ls)) 
+        fail("Source.luau compile", tostring(err))
     end
 end
 
@@ -49,11 +56,17 @@ local bridgeSrc = get(BASE .. "/Bridge.luau")
 if not bridgeSrc then
     fail("Bridge.luau fetch", "could not fetch")
 else
-    local lb, Bridge = pcall(function() return loadstring(bridgeSrc)() end)
-    if lb and type(Bridge) == "table" and Bridge.CreateWindow then
-        ok("Bridge.luau loads & exposes CreateWindow", "Bridge API ok")
+    local loader = loadstring or load
+    local fn, err = loader(bridgeSrc)
+    if type(fn) == "function" and fn then
+        local okc, Bridge = pcall(fn)
+        if okc and type(Bridge) == "table" and Bridge.CreateWindow then
+            ok("Bridge.luau compiles & runs", "Bridge API ok")
+        else
+            fail("Bridge.luau run", tostring(Bridge))
+        end
     else
-        fail("Bridge.luau load", tostring(lb))
+        fail("Bridge.luau compile", tostring(err))
     end
 end
 
@@ -62,11 +75,17 @@ local natSrc = get(BASE .. "/Native.luau")
 if not natSrc then
     fail("Native.luau fetch", "could not fetch")
 else
-    local ln, Native = pcall(function() return loadstring(natSrc)() end)
-    if ln and type(Native) == "table" and Native.new then
-        ok("Native.luau loads & exposes new", "Native API ok")
+    local loader = loadstring or load
+    local fn, err = loader(natSrc)
+    if type(fn) == "function" and fn then
+        local okc, Native = pcall(fn)
+        if okc and type(Native) == "table" and Native.new then
+            ok("Native.luau compiles & runs", "Native API ok")
+        else
+            fail("Native.luau run", tostring(Native))
+        end
     else
-        fail("Native.luau load", tostring(ln))
+        fail("Native.luau compile", tostring(err))
     end
 end
 
