@@ -1,409 +1,176 @@
--- nznt Bridge -> Airflow-UI adapter
--- Maps the Airflow-style Bridge API (used by nznt bundles/game scripts) onto Airflow-UI
--- fetched from Pocimin/airflow-ui/main/Source.luau. Brand icon: 75353810328300.
--- Every constructor also works without the Create/Add prefix (Tab:Toggle == Tab:CreateToggle).
-
-local BRAND_LOGO = ((getgenv and getgenv()) or _G).NZNT_BRAND_LOGO or "rbxassetid://75353810328300"
-
+-- nznt Bridge -> Airflow-UI adapter (rewritten against the official Airflow-UI README API)
 local function grab(url)
     local raw = game:HttpGet(url, true)
-    -- strip UTF-8 BOM if GitHub raw added one (breaks loadstring :1)
     if raw:sub(1, 1) == "\239\187\191" then raw = raw:sub(2) end
     return raw
 end
 local Airflow = loadstring(grab("https://raw.githubusercontent.com/Pocimin/airflow-ui/main/Source.luau"))()
+local BRAND_LOGO = ((getgenv and getgenv()) or _G).NZNT_BRAND_LOGO or "rbxassetid://75353810328300"
 
 local Bridge = {}
 
-local function normalize(config)
-    if type(config) ~= "table" then return { Name = tostring(config or "Control") } end
-    return config
-end
+local function norm(c) if type(c) ~= "table" then return { Name = tostring(c or "Control") } end return c end
+local function cb(c) return c.Callback or c.Function or c.OnChanged or function() end end
 
-local function cb(config)
-    return config.Callback or config.Function or config.OnChanged or function() end
-end
-
-local function proxySet(c, setter)
-    local p = { Control = c }
-    function p:Set(v) pcall(function() setter(c, v) end) end
-    p.SetValue = p.Set
-    p.SetText = p.Set
-    function p:Get() return p.Value end
-    return p
-end
-
--- Airflow Toggle
-local function toggleProxy(t)
-    local p = proxySet(t, function(el, v) el:Set(v == true) end)
-    function p:Set(v) pcall(function() t:Set(v == true) end) end
-    function p:Get() return t.Value end
-    return p
-end
-
--- Airflow Slider
-local function sliderProxy(s)
-    local p = proxySet(s, function(el, v) el:Set(v) end)
-    function p:Set(v) pcall(function() s:Set(v) end) end
-    function p:Get() return s.Value end
-    return p
-end
-
--- Airflow Button
-local function buttonProxy(b)
-    local p = proxySet(b, function() end)
-    return p
-end
-
--- Airflow Dropdown
-local function dropdownProxy(d)
-    local p = proxySet(d, function(el, v) el:Set(v) end)
-    function p:Set(v) pcall(function() d:Set(v) end) end
-    function p:Get() return d.Value end
-    function p:Refresh(values) pcall(function() d:Refresh(values) end) end
-    return p
-end
-
--- Airflow Input
-local function inputProxy(inp)
-    local p = proxySet(inp, function(el, v) el:Set(tostring(v or "")) end)
-    function p:Set(v) pcall(function() inp:Set(tostring(v or "")) end) end
-    function p:Get() return inp.Value end
-    return p
-end
-
--- Airflow paragraph/label
-local function textProxy(el)
-    local p = proxySet(el, function(pg, v) pg:Set(tostring(v or "")) end)
-    function p:Set(v) pcall(function() el:Set(tostring(v or "")) end) end
-    function p:SetContent(v) p:Set(v) end
-    function p:SetText(v) p:Set(v) end
-    function p:SetDesc(v) p:Set(v) end
-    return p
-end
-
-local function keybindProxy(k)
-    local p = proxySet(k, function(el, v) el:Set(v) end)
-    function p:Set(v) pcall(function() k:Set(v) end) end
-    function p:Get() return k.Value end
-    return p
-end
-
-local function colorProxy(col)
-    local p = proxySet(col, function(el, v) el:Set(v) end)
-    function p:Set(v) pcall(function() col:Set(v) end) end
-    function p:Get() return col.Value end
-    return p
-end
-
--- Build a Section (airflow page section) wrapper.
--- Airflow requires CreateSection(<name>) BEFORE controls so they render in a named group
--- (controls created with no active section render as blank/no-name "misc" items).
-local function wrapSection(airTab, sectionName)
-    if sectionName and sectionName ~= "" then
-        pcall(function() airTab:CreateSection(tostring(sectionName)) end)
-    end
-    local section = {}
-    local controls = {}
-
-    function section:Add(name, buildFn)
-        controls[name or ("Control" .. #controls + 1)] = buildFn()
-        return controls[name]
-    end
-
-    function section:CreateToggle(config)
-        config = normalize(config)
-        return airTab:CreateToggle({
-            Name = config.Name or config.Title or "Toggle",
-            Desc = config.Description or config.Desc,
-            CurrentValue = config.Default == true or config.CurrentValue == true or config.Value == true,
-            Flag = config.Flag,
-            Callback = cb(config)
-        })
-    end
-    function section:CreateButton(config)
-        config = normalize(config)
-        return airTab:CreateButton({
-            Name = config.Name or config.Title or "Button",
-            Desc = config.Description or config.Desc,
-            Callback = cb(config)
-        })
-    end
-    function section:CreateSlider(config)
-        config = normalize(config)
-        local range = config.Range or {}
-        return airTab:CreateSlider({
-            Name = config.Name or config.Title or "Slider",
-            Desc = config.Description or config.Desc,
-            Range = { config.Min or range[1] or 0, config.Max or range[2] or 100 },
-            Increment = config.Round or config.Decimals or 1,
-            Suffix = config.Suffix or config.Unit or "",
-            CurrentValue = config.Default or config.CurrentValue or config.Value or config.Min or range[1] or 0,
-            Flag = config.Flag,
-            Callback = cb(config)
-        })
-    end
-    function section:CreateDropdown(config)
-        config = normalize(config)
-        return airTab:CreateDropdown({
-            Name = config.Name or config.Title or "Dropdown",
-            Desc = config.Description or config.Desc,
-            Options = config.Values or config.Options or config.Items or {},
-            CurrentOption = config.Default or config.CurrentOption or config.Value,
-            MultipleOptions = config.Multi == true,
-            Flag = config.Flag,
-            Callback = cb(config)
-        })
-    end
-    function section:CreateInput(config)
-        config = normalize(config)
-        return airTab:CreateInput({
-            Name = config.Name or config.Title or "Input",
-            Desc = config.Description or config.Desc,
-            PlaceholderText = config.Placeholder or config.PlaceholderText or "",
-            CurrentValue = config.Default or config.CurrentValue or config.Value or "",
-            Flag = config.Flag,
-            Callback = cb(config)
-        })
-    end
-    section.CreateTextBox = section.CreateInput
-    function section:CreateParagraph(config)
-        config = normalize(config)
-        return airTab:CreateParagraph({
-            Title = config.Title or config.Name or "Info",
-            Content = config.Content or config.Text or config.Desc or ""
-        })
-    end
-    function section:CreateLabel(config)
-        config = normalize(config)
-        return airTab:CreateLabel({
-            Text = config.Text or config.Content or config.Name or ""
-        })
-    end
-    function section:CreateKeybind(config)
-        config = normalize(config)
-        return airTab:CreateKeybind({
-            Name = config.Name or config.Title or "Keybind",
-            Desc = config.Description or config.Desc,
-            CurrentKeybind = config.Default or config.CurrentKeybind or config.Value,
-            Flag = config.Flag,
-            Callback = cb(config),
-            OnChanged = config.OnChanged
-        })
-    end
-    function section:CreateColorPicker(config)
-        config = normalize(config)
-        return airTab:CreateColorPicker({
-            Name = config.Name or config.Title or "Color",
-            Desc = config.Description or config.Desc,
-            Color = config.Value or config.Color or Color3.fromRGB(235, 199, 246),
-            Flag = config.Flag,
-            Callback = cb(config)
-        })
-    end
-    function section:CreateProgress(config)
-        return airTab:CreateProgress(normalize(config))
-    end
-    function section:CreateDivider() return airTab:CreateDivider() end
-
-    -- Add*/Create* aliases
-    section.AddToggle = section.CreateToggle
-    section.AddButton = section.CreateButton
-    section.AddSlider = section.CreateSlider
-    section.AddDropdown = section.CreateDropdown
-    section.AddTextBox = section.CreateInput
-    section.AddInput = section.CreateInput
-    section.AddParagraph = section.CreateParagraph
-    section.AddLabel = section.CreateLabel
-    section.AddKeybind = section.CreateKeybind
-    section.AddKeyPicker = section.CreateKeybind
-    section.AddColorpicker = section.CreateColorPicker
-    section.AddProgress = section.CreateProgress
-    return section
-end
-
-function Bridge:CreateTab(config)
-    config = normalize(config)
-    local airTab = self._Window:CreateTab({
-        Name = config.Name or config.Title or "Main",
-        Desc = config.Description or config.Desc,
-        Icon = config.Icon or config.IconContact
-    })
-    local tab = {}
-    local activeSection   -- the last explicitly-created section, reused by current()
-
-    local function setActive(sec)
-        activeSection = sec
-        return sec
-    end
-
-    function tab:CreateSection(name)
-        local n = type(name) == "table" and (name.Name or name.Title or name[1]) or tostring(name or "Features")
-        return setActive(wrapSection(airTab, n))
-    end
-    function tab:CreateGroupbox(config)
-        config = normalize(config)
-        return setActive(wrapSection(airTab, config.Name or config.Title or "Features"))
-    end
-    tab.CreateGroupBox = tab.CreateGroupbox
-    tab.AddSection = tab.CreateSection
-    tab.AddLeftGroupbox = tab.CreateGroupbox
-    tab.AddRightGroupbox = tab.CreateGroupbox
-    tab.AddLeftTabbox = function(config) config = normalize(config); return { AddTab = function(cfg) cfg = normalize(cfg); return setActive(wrapSection(airTab, cfg.Name or cfg.Title or "Features")) end } end
-    tab.AddRightTabbox = function(config) config = normalize(config); return { AddTab = function(cfg) cfg = normalize(cfg); return setActive(wrapSection(airTab, cfg.Name or cfg.Title or "Features")) end } end
-    tab.AddTab = function(config) config = normalize(config); return setActive(wrapSection(airTab, config.Name or config.Title or "Features")) end
-
-    local function current()
-        -- reuse the active section; only create a default "Features" section once if none exists yet
-        if not activeSection then
-            setActive(wrapSection(airTab, "Features"))
-        end
-        return activeSection
-    end
-    tab.CreateToggle = function(c) return current():CreateToggle(c) end
-    tab.CreateButton = function(c) return current():CreateButton(c) end
-    tab.CreateSlider = function(c) return current():CreateSlider(c) end
-    tab.CreateDropdown = function(c) return current():CreateDropdown(c) end
-    tab.CreateInput = function(c) return current():CreateInput(c) end
-    tab.CreateTextBox = tab.CreateInput
-    tab.CreateParagraph = function(c) return current():CreateParagraph(c) end
-    tab.CreateLabel = function(c) return current():CreateLabel(c) end
-    tab.CreateDivider = function() return current():CreateDivider() end
-    tab.CreateKeybind = function(c) return current():CreateKeybind(c) end
-    tab.CreateColorPicker = function(c) return current():CreateColorPicker(c) end
-    tab.CreateProgress = function(c) return current():CreateProgress(c) end
-
-    tab.AddToggle = tab.CreateToggle
-    tab.AddButton = tab.CreateButton
-    tab.AddSlider = tab.CreateSlider
-    tab.AddDropdown = tab.CreateDropdown
-    tab.AddTextBox = tab.CreateInput
-    tab.AddParagraph = tab.CreateParagraph
-    tab.AddLabel = tab.CreateLabel
-    tab.AddKeybind = tab.CreateKeybind
-    tab.AddKeyPicker = tab.CreateKeybind
-    tab.AddColorpicker = tab.CreateColorPicker
-
-    tab.BuildThemeSection = function() end
-    tab.BuildConfigSection = function() end
-    function tab:Select() return self end
-    return tab
+-- wrapped control handle with Set/Get adapting to Airflow's Set(value, skipCallback?)
+local function handle(ctrl, setFn, getFn)
+    local h = { _ctrl = ctrl }
+    function h:Set(v) pcall(function() (setFn or ctrl.Set)(ctrl, v) end) end
+    function h:SetValue(v) self:Set(v) end
+    function h:Get() return getFn and getFn(ctrl) or (ctrl.Get and ctrl.Get()) or ctrl.Value end
+    function h:SetText(v) self:Set(v) end
+    function h:SetContent(v) self:Set(v) end
+    function h:SetDesc(v) self:Set(v) end
+    return h
 end
 
 function Bridge:CreateWindow(config)
-    config = normalize(config)
+    config = norm(config)
+    local UIS = game:GetService("UserInputService")
+    local screen = UIS:GetScreenResolution()
     local airWindow = Airflow:CreateWindow({
-        Name = config.Name or config.Title or "nznt's hub",
+        Name = config.Name or "nznt's hub",
         LoadingSubtitle = config.Subtitle or "by nznt",
-        Icon = config.Icon and (type(config.Icon) == "string" and config.Icon or BRAND_LOGO) or BRAND_LOGO,
-        ToggleUIKeybind = config.Keybind or "RightControl",
+        Icon = BRAND_LOGO,
+        ToggleUIKeybind = nil,                     -- we hide with Shift+U+Ctrl only
+        Size = UDim2.fromScale(1, 1),              -- cover the whole screen
+        MinSize = Vector2.new(screen.X, screen.Y),
+        MaxSize = Vector2.new(screen.X, screen.Y),
+        KeepOnScreen = true,
+        OpenButton = { Title = "nznt's hub", Icon = BRAND_LOGO },
         ConfigurationSaving = config.ConfigurationSaving,
-        Home = config.Home
+        Home = config.Home,
     })
+    local w = { _W = airWindow }
 
-    -- Fullscreen cover: fill the whole screen so nothing behind is visible.
-    pcall(function()
-        local UIS = game:GetService("UserInputService")
-        local screen = UIS:GetScreenResolution()
-        if airWindow and airWindow.Root and airWindow.Gui then
-            airWindow.MaxSize = Vector2.new(screen.X + 32, screen.Y + 32)
-            airWindow.MainSize = Vector2.new(screen.X, screen.Y)
-            airWindow.Root.Size = UDim2.fromOffset(screen.X, screen.Y)
-            airWindow.Root.Position = UDim2.new(0, 0, 0, 0)
-            airWindow.KeepOnScreen = true
-        end
-    end)
-    -- Only hide it with Shift + U + Ctrl.
-    pcall(function()
-        local UIS = game:GetService("UserInputService")
+    -- Shift + U + Ctrl to hide/show (our save-for-hide)
+    task.spawn(function()
         UIS.InputBegan:Connect(function(inp, gp)
             if gp or not inp or inp.UserInputType ~= Enum.UserInputType.Keyboard or inp.KeyCode ~= Enum.KeyCode.U then return end
             if UIS:IsKeyDown(Enum.KeyCode.LeftShift) and UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
-                task.spawn(function() pcall(function() airWindow:Toggle() end) end)
+                pcall(function() airWindow:Toggle() end)
             end
         end)
     end)
-    -- Disable the default single-keybind toggle to avoid two ways of hiding.
-    pcall(function() airWindow.Keybind = nil end)
 
-    -- Floating open/close button for mobile (and anyone without the keybind).
-    -- Lives in its OWN ScreenGui on top so it stays clickable even when the window is fullscreen.
-    pcall(function()
-        local Players = game:GetService("Players")
-        local screen = Instance.new("ScreenGui")
-        screen.Name = "NZNT_OpenButton"
-        screen.ResetOnSpawn = false
-        screen.DisplayOrder = 100
-        screen.Parent = Players.LocalPlayer and Players.LocalPlayer:WaitForChild("PlayerGui") or game:GetService("CoreGui")
-        local btn = Instance.new("TextButton")
-        btn.Name = "NZNT_OpenButton_Button"
-        btn.BackgroundColor3 = Color3.fromRGB(24, 19, 24)
-        btn.BorderSizePixel = 0
-        btn.Text = "nznt's hub"
-        btn.TextColor3 = Color3.fromRGB(233, 229, 234)
-        btn.TextSize = 14
-        btn.Size = UDim2.new(0, 120, 0, 34)
-        btn.Position = UDim2.new(0.5, -60, 0, 10)
-        btn.ZIndex = 100
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 10)
-        corner.Parent = btn
-        btn.Parent = screen
-        local dragging, dragStart, dragPos
-        btn.InputBegan:Connect(function(inp)
-            if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                dragStart = inp.Position
-                dragPos = btn.Position
-            end
-        end)
-        local UIS = game:GetService("UserInputService")
-        UIS.InputChanged:Connect(function(inp)
-            if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
-                local delta = inp.Position - dragStart
-                btn.Position = UDim2.fromOffset(dragPos.X.Offset + delta.X, dragPos.Y.Offset + delta.Y)
-            end
-        end)
-        UIS.InputEnded:Connect(function(inp)
-            if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-                dragging = false
-            end
-        end)
-        btn.Activated:Connect(function()
-            if not dragging then
-                task.spawn(function() pcall(function() airWindow:Toggle() end) end)
-            end
-        end)
-        -- remove the button when the window gui is destroyed
-        task.spawn(function()
-            repeat task.wait(1) until not airWindow or not airWindow.Gui or not airWindow.Gui.Parent
-            pcall(function() screen:Destroy() end)
-        end)
-    end)
-    local proxy = { _Window = airWindow }
-    proxy.CreateTab = Bridge.CreateTab
-    proxy.MakeTab = Bridge.CreateTab
-    function proxy:CreateHomeTab(cfg) return self:CreateTab({ Name = "Home", Icon = "home" }) end
-    proxy.MakeHomeTab = proxy.CreateHomeTab
-    function proxy:Notification(cfg) cfg = normalize(cfg); airWindow:Notify({ Title = cfg.Title, Content = cfg.Content or cfg.Description or cfg.Message, Icon = cfg.Icon }) end
-    proxy.Notify = proxy.Notification
-    function proxy:NotifyContent(cfg) self:Notification(cfg) end
-    function proxy:Toggle(open) airWindow:Toggle(open) end
-    function proxy:SetKeybind(k) airWindow:SetKeybind(k) end
-    function proxy:Destroy() airWindow:Destroy() end
-    function proxy:SaveConfig() pcall(function() airWindow:SaveConfig() end) end
-    function proxy:LoadConfig() pcall(function() airWindow:LoadConfig() end) end
-    function proxy:SelectTab(t) pcall(function() airWindow:SelectTab(t) end) end
-    function proxy:Confirm(cfg) cfg = normalize(cfg); airWindow:Confirm({ Title = cfg.Title, Content = cfg.Content, Icon = cfg.Icon, Callback = cfg.Callback, OnCancel = cfg.OnCancel }) end
-    proxy.Dialog = proxy.Confirm
-    function proxy:GetWindow() return airWindow end
-    return proxy
+    function w:CreateTab(config)
+        config = norm(config)
+        local airTab = airWindow:CreateTab({ Name = config.Name or "Main", Desc = config.Description or config.Desc, Icon = config.Icon })
+        local tab = {}
+        local activeSection
+        local function use(name)
+            local fn = activeSection
+            if fn then return fn end
+            fn = {}
+            pcall(function() airTab:CreateSection(name) end)
+            activeSection = fn
+            return fn
+        end
+        -- section heading
+        function tab:CreateSection(name)
+            local n = type(name) == "table" and (name.Name or name[1]) or tostring(name or "Features")
+            pcall(function() airTab:CreateSection(n) end)
+            return tab
+        end
+        function tab:CreateGroupbox(c) c = norm(c); return self:CreateSection(c.Name or c.Title or "Features") end
+        tab.CreateGroupBox = tab.CreateGroupbox
+        tab.AddSection = tab.CreateSection
+        tab.AddLeftGroupbox = tab.CreateGroupbox
+        tab.AddRightGroupbox = tab.CreateGroupbox
+        -- element constructors render on the airTab (Airflow appends to the tab, current section is just a heading)
+        function tab:CreateToggle(c)
+            c = norm(c)
+            local t = airTab:CreateToggle({ Name = c.Name or c.Title or "Toggle", Desc = c.Description or c.Desc, CurrentValue = c.Default == true or c.CurrentValue == true or c.Value == true, Flag = c.Flag, Callback = cb(c) })
+            return handle(t)
+        end
+        function tab:CreateButton(c)
+            c = norm(c)
+            local b = airTab:CreateButton({ Name = c.Name or c.Title or "Button", Desc = c.Description or c.Desc, Icon = c.Icon, Callback = cb(c) })
+            return handle(b)
+        end
+        function tab:CreateSlider(c)
+            c = norm(c); local r = c.Range or {}
+            local s = airTab:CreateSlider({ Name = c.Name or c.Title or "Slider", Desc = c.Description or c.Desc, Range = { c.Min or r[1] or 0, c.Max or r[2] or 100 }, Increment = c.Round or c.Decimals or c.Increment or 1, Suffix = c.Suffix or c.Unit or "", CurrentValue = c.Default or c.CurrentValue or c.Value or c.Min or r[1] or 0, Flag = c.Flag, Callback = cb(c) })
+            return handle(s)
+        end
+        function tab:CreateDropdown(c)
+            c = norm(c)
+            local d = airTab:CreateDropdown({ Name = c.Name or c.Title or "Dropdown", Desc = c.Description or c.Desc, Options = c.Values or c.Options or c.Items or {}, CurrentOption = c.Default or c.CurrentOption or c.Value, MultipleOptions = c.Multi == true, Flag = c.Flag, Callback = cb(c) })
+            return handle(d)
+        end
+        function tab:CreateInput(c)
+            c = norm(c)
+            local i = airTab:CreateInput({ Name = c.Name or c.Title or "Input", Desc = c.Description or c.Desc, PlaceholderText = c.Placeholder or c.PlaceholderText or "", CurrentValue = c.Default or c.CurrentValue or c.Value or "", Numeric = c.Numeric == true, Flag = c.Flag, Callback = cb(c) })
+            return handle(i)
+        end
+        function tab:CreateParagraph(c)
+            c = norm(c)
+            local p = airTab:CreateParagraph({ Title = c.Title or c.Name or "Info", Content = c.Content or c.Text or c.Desc or "" })
+            return handle(p, nil, function() return p.Value end)
+        end
+        function tab:CreateLabel(c)
+            c = norm(c); local v = c.Text or c.Content or c.Name or ""
+            local l = airTab:CreateLabel({ Text = (type(v) == "table" and v[1]) or v })
+            return handle(l)
+        end
+        function tab:CreateDivider() return handle(airTab:CreateDivider()) end
+        function tab:CreateKeybind(c)
+            c = norm(c)
+            local k = airTab:CreateKeybind({ Name = c.Name or c.Title or "Keybind", Desc = c.Description or c.Desc, CurrentKeybind = c.Default or c.CurrentKeybind or c.Value, Flag = c.Flag, Callback = c.Callback, OnChanged = c.OnChanged })
+            return handle(k)
+        end
+        function tab:CreateColorPicker(c)
+            c = norm(c)
+            local cp = airTab:CreateColorPicker({ Name = c.Name or c.Title or "Color", Desc = c.Description or c.Desc, Color = c.Value or c.Color or Color3.fromRGB(235,199,246), Flag = c.Flag, Callback = cb(c) })
+            return handle(cp)
+        end
+        function tab:CreateProgress(c)
+            c = norm(c)
+            local p = airTab:CreateProgress({ Name = c.Name or c.Title, Desc = c.Description, CurrentValue = c.Value or c.CurrentValue or nil, Color = c.Color, Format = c.Format, Callback = c.Callback })
+            return handle(p)
+        end
+        function tab:CreateStepper(c)
+            c = norm(c); local r = c.Range or {}
+            local st = airTab:CreateStepper({ Name = c.Name or c.Title, Desc = c.Description or c.Desc, Range = { c.Min or r[1] or 0, c.Max or r[2] or 100 }, Increment = c.Increment or 1, Suffix = c.Suffix or "", CurrentValue = c.Default or c.CurrentValue or c.Value or r[1] or 0, Flag = c.Flag, Callback = cb(c) })
+            return handle(st)
+        end
+        tab.CreateTextBox = tab.CreateInput
+        tab.AddToggle = tab.CreateToggle
+        tab.AddButton = tab.CreateButton
+        tab.AddSlider = tab.CreateSlider
+        tab.AddDropdown = tab.CreateDropdown
+        tab.AddTextBox = tab.CreateInput
+        tab.AddInput = tab.CreateInput
+        tab.AddParagraph = tab.CreateParagraph
+        tab.AddLabel = tab.CreateLabel
+        tab.AddKeybind = tab.CreateKeybind
+        tab.AddKeyPicker = tab.CreateKeybind
+        tab.AddColorpicker = tab.CreateColorPicker
+        tab.AddProgress = tab.CreateProgress
+        tab.AddStepper = tab.CreateStepper
+        tab.BuildThemeSection = function() end
+        tab.BuildConfigSection = function() end
+        function tab:Select() return tab end
+        return tab
+    end
+    w.MakeTab = w.CreateTab
+
+    function w:CreateHomeTab(c) return self:CreateTab({ Name = "Home", Icon = "home" }) end
+    w.MakeHomeTab = w.CreateHomeTab
+    function w:Notification(c) c = norm(c); pcall(function() airWindow:Notify({ Title = c.Title, Content = c.Content or c.Description or c.Message, Icon = c.Icon }) end) end
+    w.Notify = w.Notification
+    function w:Toggle(open) pcall(function() airWindow:Toggle(open) end) end
+    function w:SetKeybind(k) pcall(function() airWindow:SetKeybind(k) end) end
+    function w:Destroy() pcall(function() airWindow:Destroy() end) end
+    function w:SaveConfig() pcall(function() airWindow:SaveConfig() end) end
+    function w:LoadConfig() pcall(function() airWindow:LoadConfig() end) end
+    function w:SelectTab(t) pcall(function() airWindow:SelectTab(t) end) end
+    function w:Confirm(c) c = norm(c); pcall(function() airWindow:Confirm({ Title = c.Title, Content = c.Content, Icon = c.Icon, Callback = c.Callback, OnCancel = c.OnCancel }) end) end
+    w.Dialog = w.Confirm
+    function w:GetWindow() return airWindow end
+    return w
 end
-
 Bridge.MakeWindow = Bridge.CreateWindow
-Bridge.MakeTab = Bridge.CreateTab
-
-function Bridge:Notification(cfg) cfg = normalize(cfg); warn("[nznt] " .. tostring(cfg.Content or cfg.Description or cfg.Message or cfg.Title or "Notification")) end
+function Bridge:Notification(c) c = norm(c); warn("[nznt's hub] " .. tostring(c.Content or c.Message or c.Title or "Notification")) end
 Bridge.Notify = Bridge.Notification
-
 return Bridge
