@@ -70,8 +70,7 @@ end
 
 function Native.new(o)
     o = norm(o)
-    local UIS = game:GetService("UserInputService")
-    local airWindow = Airflow:CreateWindow({
+        local airWindow = Airflow:CreateWindow({
         Name = o.Name or "nznt's hub",
         LoadingSubtitle = o.Subtitle or "by nznt",
         Icon = typeof(o.Logo) == "string" and o.Logo or BRAND_LOGO,
@@ -79,14 +78,6 @@ function Native.new(o)
         KeepOnScreen = true,
         OpenButton = { Title = "nznt's hub", Icon = BRAND_LOGO },
     })
-    task.spawn(function()
-        UIS.InputBegan:Connect(function(inp, gp)
-            if gp or not inp or inp.UserInputType ~= Enum.UserInputType.Keyboard or inp.KeyCode ~= Enum.KeyCode.U then return end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) and UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
-                pcall(function() airWindow:Toggle() end)
-            end
-        end)
-    end)
     local w = { _W = airWindow }
     function w:DrawContainerTab(co) co = norm(co); return setmetatable({ _W = airWindow, _TabName = co.Name, _Icon = co.Icon }, containerMeta) end
     function w:DrawTabList() return w end

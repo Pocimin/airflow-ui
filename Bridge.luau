@@ -26,7 +26,6 @@ end
 
 function Bridge:CreateWindow(config)
     config = norm(config)
-    local UIS = game:GetService("UserInputService")
     local airWindow = Airflow:CreateWindow({
         Name = config.Name or "nznt's hub",
         LoadingSubtitle = config.Subtitle or "by nznt",
@@ -39,15 +38,6 @@ function Bridge:CreateWindow(config)
     })
     local w = { _W = airWindow }
 
-    -- Shift + U + Ctrl to hide/show (our save-for-hide)
-    task.spawn(function()
-        UIS.InputBegan:Connect(function(inp, gp)
-            if gp or not inp or inp.UserInputType ~= Enum.UserInputType.Keyboard or inp.KeyCode ~= Enum.KeyCode.U then return end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) and UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
-                pcall(function() airWindow:Toggle() end)
-            end
-        end)
-    end)
 
     function w:CreateTab(config)
         config = norm(config)
