@@ -27,7 +27,7 @@ end
 function Bridge:CreateWindow(config)
     config = norm(config)
     local UIS = game:GetService("UserInputService")
-    local screen = UIS:GetScreenResolution()
+    local screen = game:GetService("GuiService"):GetScreenResolution()
     local airWindow = Airflow:CreateWindow({
         Name = config.Name or "nznt's hub",
         LoadingSubtitle = config.Subtitle or "by nznt",

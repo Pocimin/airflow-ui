@@ -71,7 +71,7 @@ end
 function Native.new(o)
     o = norm(o)
     local UIS = game:GetService("UserInputService")
-    local screen = UIS:GetScreenResolution()
+    local screen = game:GetService("GuiService"):GetScreenResolution()
     local airWindow = Airflow:CreateWindow({
         Name = o.Name or "nznt's hub",
         LoadingSubtitle = o.Subtitle or "by nznt",
