@@ -159,11 +159,14 @@ function Bridge:CreateWindow(config)
             if on then
                 airWindow.MinSize = Vector2.new(scr.X, scr.Y)
                 airWindow.MaxSize = Vector2.new(scr.X, scr.Y)
-                airWindow.Root.Size = UDim2.fromScale(1, 1)
+                airWindow.MainSize = Vector2.new(scr.X, scr.Y)
+                airWindow.Root.Size = UDim2.fromOffset(scr.X, scr.Y)
                 airWindow.Root.Position = UDim2.new(0, 0, 0, 0)
+                pcall(function() airWindow.Scale.Scale = 1 end)
             else
                 airWindow.MinSize = Vector2.new(480, 360)
                 airWindow.MaxSize = Vector2.new(100000, 100000)
+                airWindow.MainSize = Vector2.new(640, 480)
                 airWindow.Root.Size = UDim2.fromOffset(640, 480)
             end
             if airWindow._fitToScreen then airWindow:_fitToScreen() end
