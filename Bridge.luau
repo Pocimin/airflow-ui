@@ -156,10 +156,16 @@ function Bridge:CreateWindow(config)
     function w:SetFullScreen(on)
         pcall(function()
             local scr = game:GetService("GuiService"):GetScreenResolution()
-            -- never stretch the window: scaled text renders blurry.
-            -- keep the native size; the fullscreen cover is the script's black ScreenGui.
-            airWindow.MinSize = Vector2.new(480, 360)
-            airWindow.MaxSize = Vector2.new(100000, 100000)
+            if on then
+                airWindow.MinSize = Vector2.new(scr.X, scr.Y)
+                airWindow.MaxSize = Vector2.new(scr.X, scr.Y)
+                airWindow.Root.Size = UDim2.fromScale(1, 1)
+                airWindow.Root.Position = UDim2.new(0, 0, 0, 0)
+            else
+                airWindow.MinSize = Vector2.new(480, 360)
+                airWindow.MaxSize = Vector2.new(100000, 100000)
+                airWindow.Root.Size = UDim2.fromOffset(640, 480)
+            end
             if airWindow._fitToScreen then airWindow:_fitToScreen() end
             if airWindow._clampToScreen then airWindow:_clampToScreen() end
         end)
