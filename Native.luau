@@ -80,7 +80,7 @@ function Native.new(o)
     })
     local w = { _W = airWindow }
     function w:DrawContainerTab(co) co = norm(co); return setmetatable({ _W = airWindow, _TabName = co.Name, _Icon = co.Icon }, containerMeta) end
-    function w:DrawTabList() return w end
+    function w:DrawCategory(c) c = norm(c); return w end
     function w:AddToggle(c) return buildSection(airWindow:CreateTab({ Name = "Controls" })):AddToggle(c) end
     function w:AddButton(c) return buildSection(airWindow:CreateTab({ Name = "Controls" })):AddButton(c) end
     function w:Notify(c) c = norm(c); pcall(function() airWindow:Notify({ Title = c.Title, Content = c.Content or c.Description, Icon = c.Icon or c.Image }) end) end
@@ -90,16 +90,23 @@ function Native.new(o)
     function w:SetFullScreen(on)
         pcall(function()
             local scr = game:GetService("GuiService"):GetScreenResolution()
-            -- never stretch the window: scaled text renders blurry.
-            -- keep the native size; the fullscreen cover is the script's black ScreenGui.
-            airWindow.MinSize = Vector2.new(480, 360)
-            airWindow.MaxSize = Vector2.new(100000, 100000)
+            if on then
+                airWindow.MinSize = Vector2.new(scr.X, scr.Y)
+                airWindow.MaxSize = Vector2.new(scr.X, scr.Y)
+                airWindow.Root.Size = UDim2.fromScale(1, 1)
+                airWindow.Root.Position = UDim2.new(0, 0, 0, 0)
+            else
+                airWindow.MinSize = Vector2.new(480, 360)
+                airWindow.MaxSize = Vector2.new(100000, 100000)
+                airWindow.Root.Size = UDim2.fromOffset(640, 480)
+            end
             if airWindow._fitToScreen then airWindow:_fitToScreen() end
             if airWindow._clampToScreen then airWindow:_clampToScreen() end
         end)
     end
     return w
 end
+Native.Elements = {}
 Native.Scale = { Window = 1 }
 Native.Window = Native.new
 Native.theme = {}
@@ -110,10 +117,16 @@ function Native:GetConfig() return nil end
 function Native:SetConfig() return nil end
 function Native:Destroy() if Native._W then pcall(function() Native._W:Destroy() end) end end
 function Native:newNotify()
-    return { Notify = function(c) c = norm(c)
+    local function post(cfg)
+        cfg = norm(cfg)
         local win = Native._W
-        if win and win.Notify then pcall(function() win:Notify({ Title = c.Title, Content = c.Content }) end) end
-    end }
+        if win and win.Notify then pcall(function() win:Notify({ Title = c.Title, Content = c.Content, Icon = c.Icon, Duration = c.Duration or c.Lifetime, Type = c.Type }) end) end
+        return { Destroy = function() end }
+    end
+    return {
+        Notify = post,
+        new = function(cfg) return post(cfg) end,
+    }
 end
 Native.new = (function(orig)
     local _realNew = orig
