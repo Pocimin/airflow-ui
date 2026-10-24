@@ -467,7 +467,7 @@ local function arrowIndicator(parent, anchorX, offsetX)
             AnchorPoint = Vector2.new(0.5, 0.5),
             Position = UDim2.fromScale(0.5, 0.5),
             Size = UDim2.fromOffset(18, 18),
-            Text = "â€º",
+            Text = "\u{203A}",
             TextSize = 22,
             TextXAlignment = Enum.TextXAlignment.Center,
             TextColor3 = Theme.Muted,
@@ -2140,7 +2140,7 @@ function Tab:Stepper(opts)
         end)
         return button
     end
-    local minus = stepButton("âˆ’", 1)
+    local minus = stepButton("\u{2212}", 1)
     local valueLabel = label({
         Size = UDim2.new(0, 30, 1, 0),
         TextSize = 13,
@@ -2717,7 +2717,7 @@ function Library.Window(_, opts)
         Size = UDim2.fromOffset(34, 34),
         BackgroundColor3 = Theme.Surface2,
         BackgroundTransparency = 1,
-        Text = "Ã—",
+        Text = "\u{D7}",
         TextColor3 = Theme.Muted,
         TextSize = 28,
         FontFace = Fonts.Bold,
@@ -3575,7 +3575,7 @@ local function statRow(parent, order, icon, title)
     return label({
         Position = UDim2.fromOffset(14, 34),
         Size = UDim2.new(1, -28, 0, 18),
-        Text = "â€¦",
+        Text = "\u{2026}",
         TextSize = 15,
         Parent = card,
     })
@@ -3924,7 +3924,7 @@ function Window:_buildHome(opts)
                     end
                     local body = entry.Content or entry.Body
                     if type(entry.Changes) == "table" then
-                        body = "â€¢ " .. table.concat(entry.Changes, "\nâ€¢ ")
+                        body = "\u{2022} " .. table.concat(entry.Changes, "\n\u{2022} ")
                     end
                     if body then
                         label({
@@ -4631,7 +4631,7 @@ function Window:Notify(opts)
         Position = UDim2.new(1, 6, 0, -5),
         Size = UDim2.fromOffset(24, 24),
         BackgroundTransparency = 1,
-        Text = "Ã—",
+        Text = "\u{D7}",
         TextColor3 = Theme.Muted,
         TextSize = 22,
         FontFace = Fonts.Bold,

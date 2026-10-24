@@ -1,10 +1,11 @@
 -- nznt Native-CompKiller -> Airflow-UI adapter (rewritten against official Airflow-UI API)
+local AIRFLOW_REF = (((getgenv and getgenv()) or _G).NZNT_AIRFLOW_REF) or "main"
 local function grab(url)
     local raw = game:HttpGet(url, true)
     if raw:sub(1, 1) == "\239\187\191" then raw = raw:sub(2) end
     return raw
 end
-local Airflow = loadstring(grab("https://raw.githubusercontent.com/Pocimin/airflow-ui/main/Source.luau"))()
+local Airflow = loadstring(grab("https://raw.githubusercontent.com/Pocimin/airflow-ui/" .. AIRFLOW_REF .. "/Source.luau"))()
 local Native = {}
 local BRAND_LOGO = ((getgenv and getgenv()) or _G).NZNT_BRAND_LOGO or "rbxassetid://75353810328300"
 
@@ -123,7 +124,7 @@ function Native:newNotify()
     local function post(cfg)
         cfg = norm(cfg)
         local win = Native._W
-        if win and win.Notify then pcall(function() win:Notify({ Title = c.Title, Content = c.Content, Icon = c.Icon, Duration = c.Duration or c.Lifetime, Type = c.Type }) end) end
+        if win and win.Notify then pcall(function() win:Notify({ Title = cfg.Title, Content = cfg.Content or cfg.Description, Icon = cfg.Icon or cfg.Image, Duration = cfg.Duration or cfg.Lifetime, Type = cfg.Type }) end) end
         return { Destroy = function() end }
     end
     return {
